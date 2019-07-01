@@ -1,0 +1,43 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "Ristretto255",
+        "repositoryURL": "https://github.com/nixberg/Ristretto255",
+        "state": {
+          "branch": "master",
+          "revision": "2794d2384df217dc992f70e585419958364ee877",
+          "version": null
+        }
+      },
+      {
+        "package": "Sodium",
+        "repositoryURL": "https://github.com/jedisct1/swift-sodium",
+        "state": {
+          "branch": null,
+          "revision": "5900a54dea817befa18f3148889fe922a38afe7f",
+          "version": "0.8.0"
+        }
+      },
+      {
+        "package": "Xoodoo",
+        "repositoryURL": "https://github.com/nixberg/Xoodoo",
+        "state": {
+          "branch": "master",
+          "revision": "cbac4658e44b241b52d527ec93eefb1509117fa9",
+          "version": null
+        }
+      },
+      {
+        "package": "Xoodyak",
+        "repositoryURL": "https://github.com/nixberg/Xoodyak",
+        "state": {
+          "branch": "master",
+          "revision": "c6aa436e5dc5d2db8db0fb77bde97f6614092158",
+          "version": null
+        }
+      }
+    ]
+  },
+  "version": 1
+}
