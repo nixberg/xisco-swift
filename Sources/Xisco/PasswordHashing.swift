@@ -11,52 +11,61 @@ extension Int {
 }
 
 extension Xoodyak {
-    fileprivate mutating func squeeze(to buffer: inout [UInt8]) {
-        self.squeeze(count: blockSize, to: &buffer)
+    fileprivate mutating func absorb(_ n: Int) {
+        var n = n.littleEndian
+        withUnsafeBytes(of: &n) { self.absorb(from: $0) }
     }
     
-    fileprivate mutating func squeezeInt() -> Int {
-        var block = [UInt8]()
-        self.squeeze(count: 8, to: &block)
-        return UnsafeRawPointer(block).assumingMemoryBound(to: Int.self).pointee.littleEndian
+    fileprivate mutating func squeeze(count: Int) -> [UInt8] {
+        var data = [UInt8]()
+        self.squeeze(count: count, to: &data)
+        return data
+    }
+    
+    fileprivate mutating func squeeze() -> Int {
+        UnsafeRawPointer(self.squeeze(count: 8)).load(as: Int.self).littleEndian
     }
 }
 
 public func hash<D: DataProtocol, M: MutableDataProtocol>(password: D, salt: D, to data: inout M, spaceCost: Int, timeCost: Int) {
     assert(spaceCost >= 0 && timeCost >= 0)
     
+    var counter = 0
+    func hash<D: DataProtocol>(_ buffers: D...) -> [UInt8] {
+        var xoodyak = Xoodyak()
+        xoodyak.absorb(counter)
+        counter += 1
+        for buffer in buffers {
+            xoodyak.absorb(from: buffer)
+        }
+        return xoodyak.squeeze(count: blockSize)
+    }
+    
     let delta = 3
-    var buffer = [[UInt8]](repeating: [UInt8](repeating: 0, count: blockSize), count: spaceCost)
     
-    var xoodyak = Xoodyak()
-    xoodyak.absorb(from: password)
-    xoodyak.absorb(from: salt)
-    xoodyak.squeeze(to: &buffer[0])
-    
-    for m in 1..<spaceCost {
-        xoodyak.absorb(from: buffer[m &- 1])
-        xoodyak.squeeze(to: &buffer[m])
+    var buffer = [hash(password, salt)]
+    for m in 0..<(spaceCost - 1) {
+        buffer.append(hash(buffer[m]))
     }
     
     for t in 0..<timeCost {
         for m in 0..<spaceCost {
-            xoodyak.absorb(from: buffer[(m &- 1).modulo(spaceCost)])
-            xoodyak.absorb(from: buffer[m])
-            xoodyak.squeeze(to: &buffer[m])
+            buffer[m] = hash(buffer[(m - 1).modulo(spaceCost)], buffer[m])
             
             for i in 0..<delta {
+                var xoodyak = Xoodyak()
+                xoodyak.absorb(counter)
+                counter += 1
                 xoodyak.absorb(from: salt)
-                xoodyak.absorb(nonce: UInt64(t))
-                xoodyak.absorb(nonce: UInt64(m))
-                xoodyak.absorb(nonce: UInt64(i))
-                let randomIndex = xoodyak.squeezeInt().modulo(spaceCost)
+                xoodyak.absorb(t)
+                xoodyak.absorb(m)
+                xoodyak.absorb(i)
+                let randomIndex = xoodyak.squeeze().modulo(spaceCost)
                 
-                xoodyak.absorb(from: buffer[m])
-                xoodyak.absorb(from: buffer[randomIndex])
-                xoodyak.squeeze(to: &buffer[m])
+                buffer[m] = hash(buffer[m], buffer[randomIndex])
             }
         }
     }
-
+    
     data.append(contentsOf: buffer.last!)
 }
